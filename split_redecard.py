@@ -6,36 +6,36 @@ from collections import defaultdict
 # Função principal de detecção
 # ==============================
 def process_file(input_path, output_dir):
-    """
-    Detecta o tipo de arquivo (EEVC, EEVD, EEFI) e chama o parser correto.
-    """
     os.makedirs(output_dir, exist_ok=True)
     filename = os.path.basename(input_path).upper()
 
+    # 1️⃣ Detecta pelo nome do arquivo
     if "EEVC" in filename:
         print("🟠 Detectado arquivo EEVC (Vendas Crédito)")
         return process_eevc(input_path, output_dir)
-
     elif "EEVD" in filename:
         print("🟢 Detectado arquivo EEVD (Vendas Débito)")
         return process_eevd(input_path, output_dir)
-
     elif "EEFI" in filename:
         print("🔵 Detectado arquivo EEFI (Financeiro)")
         return process_eefi(input_path, output_dir)
 
+    # 2️⃣ Detecta pelo conteúdo do arquivo
+    with open(input_path, "r", encoding="utf-8", errors="replace") as f:
+        header = f.readline().strip()
+
+    if header.startswith("002"):  # EEVC
+        print("🟠 Detecção por conteúdo: EEVC")
+        return process_eevc(input_path, output_dir)
+    elif header.startswith("00"):  # EEVD (csv)
+        print("🟢 Detecção por conteúdo: EEVD")
+        return process_eevd(input_path, output_dir)
+    elif header.startswith("03") and header.endswith("EEFI"):
+        print("🔵 Detecção por conteúdo: EEFI (posicional)")
+        return process_eefi(input_path, output_dir)
     else:
-        print("⚠️ Tipo de arquivo não reconhecido no nome. Tentando deduzir pelo conteúdo...")
-        # fallback: tenta ler o início do arquivo
-        with open(input_path, "r", encoding="utf-8", errors="replace") as f:
-            header = f.readline()
-        if header.startswith("002"):
-            return process_eevc(input_path, output_dir)
-        elif header.startswith("00"):
-            return process_eevd(input_path, output_dir)
-        else:
-            print("❌ Não foi possível determinar o tipo de arquivo.")
-            return []
+        print("❌ Não foi possível determinar o tipo de arquivo.")
+        return []
 
 
 # ============================================
@@ -153,10 +153,11 @@ def process_eevd(input_path, output_dir):
 # ============================================
 def process_eefi(input_path, output_dir):
     """
-    Divide o arquivo EEFI por número de filiação (coluna 2, CSV).
+    Lê arquivo EEFI (Financeiro) e divide por estabelecimento.
+    Layout posicional, tipo de registro inicia com 03 (header) e 04 (detalhes).
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
-        lines = f.readlines()
+        lines = [line.rstrip('\n') for line in f]
 
     if not lines:
         print("Arquivo vazio.")
@@ -165,17 +166,20 @@ def process_eefi(input_path, output_dir):
     header_arquivo = None
     trailer_arquivo = None
     grupos = defaultdict(list)
+    current_estab = None
 
-    for i, line in enumerate(lines):
-        parts = [p.strip() for p in line.split(",")]
-        tipo = parts[0]
-        if tipo == "00":
+    for line in lines:
+        tipo = line[:2]  # EEFI usa 2 posições para tipo de registro
+        if tipo == "03":
             header_arquivo = line
         elif tipo == "04":
-            trailer_arquivo = line
-        elif len(parts) > 1:
-            numero_filiacao = parts[1]
+            # registro de detalhe — identificar número da filiação (PV)
+            # No layout, o PV está nas posições 3–11
+            numero_filiacao = line[2:11].strip()
             grupos[numero_filiacao].append(line)
+        else:
+            # fallback para trailer, se existir
+            trailer_arquivo = line
 
     gerados = []
     for estab, blocos in grupos.items():
@@ -183,11 +187,15 @@ def process_eefi(input_path, output_dir):
         out_path = os.path.join(output_dir, filename)
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
-                f.write(header_arquivo)
+                f.write(header_arquivo + '\n')
             for linha in blocos:
-                f.write(linha)
+                f.write(linha + '\n')
             if trailer_arquivo:
-                f.write(trailer_arquivo)
+                f.write(trailer_arquivo + '\n')
+        gerados.append(out_path)
+
+    print(f"✅ {len(gerados)} arquivos EEFI gerados em {output_dir}.")
+    return gerados
         gerados.append(out_path)
 
     print(f"✅ {len(gerados)} arquivos EEFI gerados em {output_dir}.")
