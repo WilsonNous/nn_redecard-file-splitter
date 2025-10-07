@@ -1,0 +1,66 @@
+{
+  "EEVC": {
+    "descricao": "Extrato Eletrônico de Vendas Crédito",
+    "formato": "posicional",
+    "header_arquivo": "002",
+    "header_estabelecimento": "004",
+    "trailer_estabelecimento": "026",
+    "trailer_arquivo": "028",
+    "campo_estabelecimento": {
+      "inicio": 3,
+      "fim": 12,
+      "descricao": "Número de filiação (PV)"
+    },
+    "observacoes": [
+      "Arquivo de layout posicional (até 1024 colunas)",
+      "Cada bloco 004–026 representa um estabelecimento",
+      "O trailer 028 é único e deve ser replicado para cada arquivo gerado",
+      "Manter codificação UTF-8 durante leitura e gravação"
+    ]
+  },
+
+  "EEVD": {
+    "descricao": "Extrato Eletrônico de Vendas Débito",
+    "formato": "csv",
+    "delimiter": ",",
+    "header_arquivo": "00",
+    "header_estabelecimento": "01",
+    "trailer_estabelecimento": "03",
+    "trailer_arquivo": "04",
+    "coluna_estabelecimento": 2,
+    "observacoes": [
+      "Arquivo CSV delimitado por vírgula",
+      "Campo de filiação está na segunda coluna (índice 1 no Python)",
+      "Header 00 e trailer 04 são replicados para cada arquivo gerado",
+      "Trailer contém totais e contagem de registros"
+    ]
+  },
+
+  "EEFI": {
+    "descricao": "Extrato Eletrônico Financeiro",
+    "formato": "csv",
+    "delimiter": ",",
+    "header_arquivo": "00",
+    "header_estabelecimento": "01",
+    "trailer_estabelecimento": "03",
+    "trailer_arquivo": "04",
+    "coluna_estabelecimento": 2,
+    "observacoes": [
+      "Layout semelhante ao EEVD",
+      "Campo de filiação na segunda coluna",
+      "Manter header/trailer replicados em cada arquivo"
+    ]
+  },
+
+  "geral": {
+    "encoding": "utf-8",
+    "salvar_em": "outputs",
+    "gerar_zip_saida": true,
+    "log_console": true,
+    "max_linhas_preview": 20,
+    "regras_trailer": {
+      "recalcular_totais": false,
+      "manter_trailer_original": true
+    }
+  }
+}
