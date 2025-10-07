@@ -83,7 +83,7 @@ def process_eevc(input_path, output_dir):
             if re.fullmatch(r'\d{8}', raw_data):
                 data_movimento = raw_data[:4] + raw_data[-2:]
             # NSA
-            nsa_raw = line[72:78].strip()
+            nsa_raw = line[71:77].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
                 nsa = nsa_raw[-3:].zfill(3)
         elif tipo == "004":
@@ -211,7 +211,7 @@ def process_eefi(input_path, output_dir):
             if re.fullmatch(r'\d{8}', raw_data):
                 data_movimento = raw_data[:4] + raw_data[-2:]
             # NSA - corrigido para pegar os 3 últimos
-            nsa_raw = line[72:78].strip()
+            nsa_raw = line[75:81].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
                 nsa = nsa_raw[-3:].zfill(3)
         elif tipo == "040":
