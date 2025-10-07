@@ -45,6 +45,7 @@ def process_eevc(input_path, output_dir):
     """
     Lê um arquivo EEVC consolidado e desagrupa por estabelecimento (filiação).
     Mantém header (002) e trailer (028) para cada novo arquivo.
+    Nome do arquivo final: <estab>_EEVC_<ddmmaa>_<NSA>.txt
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
         lines = [line.rstrip('\n') for line in f]
@@ -57,20 +58,23 @@ def process_eevc(input_path, output_dir):
     trailer_arquivo = None
     grupos = defaultdict(list)
     current_estab = None
+    data_movimento = "000000"
+    nsa = "000"
 
     for line in lines:
-        tipo = line[:3].strip()  # primeiros 3 caracteres
+        tipo = line[:3].strip()
         if tipo == "002":
             header_arquivo = line
+            # NSA geralmente em 157–163 e data movimento em 143–150 (exemplo Itaú)
+            nsa = line[157:163].strip() or "000"
+            data_movimento = line[143:149].strip() or "000000"
         elif tipo == "028":
             trailer_arquivo = line
         elif tipo == "004":
-            # início de um novo bloco (Header Estabelecimento)
             numero_filiacao = line[3:12].strip()
             current_estab = numero_filiacao
             grupos[current_estab].append(line)
         elif tipo == "026":
-            # fim do bloco do estabelecimento
             if current_estab:
                 grupos[current_estab].append(line)
                 current_estab = None
@@ -78,11 +82,11 @@ def process_eevc(input_path, output_dir):
             if current_estab:
                 grupos[current_estab].append(line)
 
-    # grava arquivos individuais
     gerados = []
     for estab, blocos in grupos.items():
-        filename = f"EEVC_{estab}.txt"
+        filename = f"{estab}_EEVC_{data_movimento}_{nsa}.txt"
         out_path = os.path.join(output_dir, filename)
+
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
                 f.write(header_arquivo + '\n')
@@ -90,7 +94,9 @@ def process_eevc(input_path, output_dir):
                 f.write(linha + '\n')
             if trailer_arquivo:
                 f.write(trailer_arquivo + '\n')
+
         gerados.append(out_path)
+        print(f"🧾 Gerado: {filename}")
 
     print(f"✅ {len(gerados)} arquivos EEVC gerados em {output_dir}.")
     return gerados
@@ -102,6 +108,7 @@ def process_eevc(input_path, output_dir):
 def process_eevd(input_path, output_dir):
     """
     Lê arquivo EEVD (CSV delimitado por vírgula) e divide por número de filiação (coluna 2).
+    Nome do arquivo final: <estab>_EEVD_<ddmmaa>_<NSA>.txt
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
         lines = f.readlines()
@@ -113,28 +120,29 @@ def process_eevd(input_path, output_dir):
     header_arquivo = None
     trailer_arquivo = None
     grupos = defaultdict(list)
+    data_movimento = "000000"
+    nsa = "000"
 
     for i, line in enumerate(lines):
         parts = [p.strip() for p in line.split(",")]
         tipo = parts[0]
         if tipo == "00":
             header_arquivo = line
+            if len(parts) > 4:
+                data_movimento = parts[3].replace("/", "")[-6:] or "000000"
+            if len(parts) > 6:
+                nsa = parts[6].zfill(3) or "000"
         elif tipo == "04":
             trailer_arquivo = line
-        elif tipo == "01":
-            # registro de resumo por PV
+        elif len(parts) > 1:
             numero_filiacao = parts[1]
             grupos[numero_filiacao].append(line)
-        else:
-            # adiciona registros do mesmo PV
-            if len(parts) > 1:
-                numero_filiacao = parts[1]
-                grupos[numero_filiacao].append(line)
 
     gerados = []
     for estab, blocos in grupos.items():
-        filename = f"EEVD_{estab}.txt"
+        filename = f"{estab}_EEVD_{data_movimento}_{nsa}.txt"
         out_path = os.path.join(output_dir, filename)
+
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
                 f.write(header_arquivo)
@@ -142,7 +150,9 @@ def process_eevd(input_path, output_dir):
                 f.write(linha)
             if trailer_arquivo:
                 f.write(trailer_arquivo)
+
         gerados.append(out_path)
+        print(f"🧾 Gerado: {filename}")
 
     print(f"✅ {len(gerados)} arquivos EEVD gerados em {output_dir}.")
     return gerados
@@ -155,6 +165,7 @@ def process_eefi(input_path, output_dir):
     """
     Lê arquivo EEFI (Financeiro) e divide por estabelecimento.
     Layout posicional, tipo de registro inicia com 03 (header) e 04 (detalhes).
+    Nome do arquivo final: <estab>_EEFI_<ddmmaa>_<NSA>.txt
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
         lines = [line.rstrip('\n') for line in f]
@@ -166,24 +177,26 @@ def process_eefi(input_path, output_dir):
     header_arquivo = None
     trailer_arquivo = None
     grupos = defaultdict(list)
+    data_movimento = "000000"
+    nsa = "000"
 
     for line in lines:
-        tipo = line[:2]  # EEFI usa 2 posições para tipo de registro
+        tipo = line[:2]
         if tipo == "03":
             header_arquivo = line
+            nsa = line[54:57].strip() or "000"       # estimado
+            data_movimento = line[21:27].strip() or "000000"
         elif tipo == "04":
-            # registro de detalhe — identificar número da filiação (PV)
-            # No layout, o PV está nas posições 3–11
             numero_filiacao = line[2:11].strip()
             grupos[numero_filiacao].append(line)
         else:
-            # fallback para trailer, se existir
             trailer_arquivo = line
 
     gerados = []
     for estab, blocos in grupos.items():
-        filename = f"EEFI_{estab}.txt"
+        filename = f"{estab}_EEFI_{data_movimento}_{nsa}.txt"
         out_path = os.path.join(output_dir, filename)
+
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
                 f.write(header_arquivo + '\n')
@@ -191,7 +204,9 @@ def process_eefi(input_path, output_dir):
                 f.write(linha + '\n')
             if trailer_arquivo:
                 f.write(trailer_arquivo + '\n')
+
         gerados.append(out_path)
+        print(f"🧾 Gerado: {filename}")
 
     print(f"✅ {len(gerados)} arquivos EEFI gerados em {output_dir}.")
     return gerados
