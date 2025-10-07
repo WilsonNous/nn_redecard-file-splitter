@@ -57,7 +57,7 @@ def process_eevc(input_path, output_dir):
     """
     EEVC (Crédito):
     - Data do Movimento: posições 3–10 (DDMMAAAA)
-    - NSA: posições 72–78
+    - NSA: posições 67–73
     Nome: <estab>_<ddmmaa>_<nsa>_EEVC.txt
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
@@ -83,9 +83,9 @@ def process_eevc(input_path, output_dir):
             if re.fullmatch(r'\d{8}', raw_data):
                 data_movimento = raw_data[:4] + raw_data[-2:]
             # NSA
-            nsa_raw = line[72:78].strip()
+            nsa_raw = line[67:73].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
-                nsa = nsa_raw[-3:]
+                nsa = nsa_raw[-3:].zfill(3)
         elif tipo == "004":
             pv = line[3:12].strip()
             current_estab = pv
@@ -124,7 +124,7 @@ def process_eevc(input_path, output_dir):
 def process_eevd(input_path, output_dir):
     """
     EEVD: CSV (vírgula).
-    - Data do Movimento: coluna 4 (DDMMAAAA)
+    - Data do Movimento: coluna 2 (DDMMAAAA)
     - NSA: coluna 8 (numérico)
     Nome: <estab>_<ddmmaa>_<nsa>_EEVD.txt
     """
@@ -146,11 +146,12 @@ def process_eevd(input_path, output_dir):
         tipo = parts[0]
         if tipo == "00":
             header_arquivo = line
-            if len(parts) > 3 and re.fullmatch(r'\d{8}', parts[3]):
-                d = parts[3]
+            # Corrigido: data está na 2ª vírgula (coluna 2)
+            if len(parts) > 2 and re.fullmatch(r'\d{8}', parts[2]):
+                d = parts[2]
                 data_movimento = d[:4] + d[-2:]
             if len(parts) > 7 and parts[7].isdigit():
-                nsa = parts[7][-3:]
+                nsa = parts[7][-3:].zfill(3)
         elif tipo == "04":
             trailer_arquivo = line
         elif len(parts) > 1:
@@ -209,22 +210,19 @@ def process_eefi(input_path, output_dir):
             raw_data = line[3:11].strip()
             if re.fullmatch(r'\d{8}', raw_data):
                 data_movimento = raw_data[:4] + raw_data[-2:]
-            # NSA
+            # NSA - corrigido para pegar os 3 últimos
             nsa_raw = line[66:72].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
-                nsa = nsa_raw[-3:]
+                nsa = nsa_raw[-3:].zfill(3)
         elif tipo == "040":
-            # Pega PV (filiação) — posições 2–11 pelo layout
             current_pv = line[2:11].strip() or "000000000"
             grupos[current_pv].append(line)
         elif tipo in ("050", "999"):
             trailer_arquivo = line
         else:
-            # Qualquer linha não reconhecida entra no último PV ativo
             if current_pv:
                 grupos[current_pv].append(line)
 
-    # Se não houver nenhum grupo, gera 1 arquivo geral
     if not grupos:
         grupos["HEADER"] = lines
 
