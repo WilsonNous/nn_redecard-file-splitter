@@ -27,7 +27,7 @@ def process_file(input_path, output_dir):
     if header.startswith("002"):  # EEVC
         print("🟠 Detecção por conteúdo: EEVC")
         return process_eevc(input_path, output_dir)
-    elif header.startswith("00"):  # EEVD (csv)
+    elif header.startswith("00"):  # EEVD (CSV)
         print("🟢 Detecção por conteúdo: EEVD")
         return process_eevd(input_path, output_dir)
     elif header.startswith("03") and header.endswith("EEFI"):
@@ -149,7 +149,7 @@ def process_eevd(input_path, output_dir):
 
 
 # ============================================
-# Parser EEFI (Financeiro) - estrutura semelhante ao EEVD
+# Parser EEFI (Financeiro) - layout posicional
 # ============================================
 def process_eefi(input_path, output_dir):
     """
@@ -166,7 +166,6 @@ def process_eefi(input_path, output_dir):
     header_arquivo = None
     trailer_arquivo = None
     grupos = defaultdict(list)
-    current_estab = None
 
     for line in lines:
         tipo = line[:2]  # EEFI usa 2 posições para tipo de registro
@@ -192,10 +191,6 @@ def process_eefi(input_path, output_dir):
                 f.write(linha + '\n')
             if trailer_arquivo:
                 f.write(trailer_arquivo + '\n')
-        gerados.append(out_path)
-
-    print(f"✅ {len(gerados)} arquivos EEFI gerados em {output_dir}.")
-    return gerados
         gerados.append(out_path)
 
     print(f"✅ {len(gerados)} arquivos EEFI gerados em {output_dir}.")
