@@ -57,7 +57,7 @@ def process_eevc(input_path, output_dir):
     """
     EEVC (Crédito):
     - Data do Movimento: posições 3–10 (DDMMAAAA)
-    - NSA: posições 66–71
+    - NSA: posições 72–78
     Nome: <estab>_<ddmmaa>_<nsa>_EEVC.txt
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
@@ -83,7 +83,7 @@ def process_eevc(input_path, output_dir):
             if re.fullmatch(r'\d{8}', raw_data):
                 data_movimento = raw_data[:4] + raw_data[-2:]
             # NSA
-            nsa_raw = line[66:72].strip()
+            nsa_raw = line[72:78].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
                 nsa = nsa_raw[-3:]
         elif tipo == "004":
@@ -181,6 +181,8 @@ def process_eevd(input_path, output_dir):
 def process_eefi(input_path, output_dir):
     """
     EEFI (Financeiro):
+    - Header 030
+    - Detalhes 040 (por PV)
     - Data do Movimento: posições 3–10 (DDMMAAAA)
     - NSA: posições 66–71
     Nome: <estab>_<ddmmaa>_<nsa>_EEFI.txt
@@ -197,6 +199,7 @@ def process_eefi(input_path, output_dir):
     grupos = defaultdict(list)
     data_movimento = "000000"
     nsa = "000"
+    current_pv = None
 
     for line in lines:
         tipo = line[:3]
@@ -210,11 +213,20 @@ def process_eefi(input_path, output_dir):
             nsa_raw = line[66:72].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
                 nsa = nsa_raw[-3:]
-        elif tipo == "04":
-            pv = line[2:11].strip()
-            grupos[pv].append(line)
-        else:
+        elif tipo == "040":
+            # Pega PV (filiação) — posições 2–11 pelo layout
+            current_pv = line[2:11].strip() or "000000000"
+            grupos[current_pv].append(line)
+        elif tipo in ("050", "999"):
             trailer_arquivo = line
+        else:
+            # Qualquer linha não reconhecida entra no último PV ativo
+            if current_pv:
+                grupos[current_pv].append(line)
+
+    # Se não houver nenhum grupo, gera 1 arquivo geral
+    if not grupos:
+        grupos["HEADER"] = lines
 
     gerados = []
     for estab, blocos in grupos.items():
