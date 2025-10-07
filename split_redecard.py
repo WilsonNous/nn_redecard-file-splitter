@@ -19,7 +19,7 @@ def ensure_outfile(path_dir: str, filename: str) -> str:
 
 def safe_slice(s: str, start: int, end: int) -> str:
     """Slice seguro para strings."""
-    return s[start:end] if len(s) >= end else s[start:]
+    return s[start:end] if len(s) > start else ""
 
 # =============== detecção ===============
 
@@ -224,11 +224,6 @@ def process_eefi(input_path, output_dir):
             if trailer_arquivo:
                 f.write(trailer_arquivo + '\n')
         gerados.append(out_path)
-        print(f"🧾 Gerado: {os.path.basename(out_path)}")
-
-    print(f"✅ {len(gerados)} arquivos EEFI gerados.")
-    return gerados
-
         print(f"🧾 Gerado: {os.path.basename(out_path)}")
 
     print(f"✅ {len(gerados)} arquivos EEFI gerados.")
