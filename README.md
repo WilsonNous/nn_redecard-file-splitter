@@ -15,14 +15,9 @@ de header e trailer de cada arquivo original.
 2. A aplicação identifica automaticamente o tipo de arquivo:
    - 🟠 **EEVC** → Vendas Crédito (layout posicional)
    - 🟢 **EEVD** → Vendas Débito (CSV)
-   - 🔵 **EEFI** → Financeiro (CSV)
+   - 🔵 **EEFI** → Financeiro (posicional)
 3. Cada arquivo é desmembrado por **estabelecimento (filiação/PV)**;
-4. Um novo arquivo é gerado para cada PV, contendo:
-   - Header do arquivo (002 ou 00)
-   - Header do estabelecimento
-   - Registros de detalhe
-   - Trailer do estabelecimento
-   - Trailer do arquivo
+4. Um novo arquivo é gerado para cada PV com nome padronizado e dados do header;
 5. Todos os arquivos processados são empacotados em um `.zip` e disponibilizados para download.
 
 ---
@@ -31,11 +26,11 @@ de header e trailer de cada arquivo original.
 
 - ✅ Processamento **automático por tipo de layout**  
 - ✅ Suporte a **EEVC, EEVD e EEFI**  
-- ✅ Upload múltiplo  
-- ✅ Geração de **ZIP consolidado**  
+- ✅ Upload múltiplo e download consolidado (.zip)  
+- ✅ Nome inteligente de saída (inclui PV, data e NSA)  
 - ✅ Compatível com o **Render (Free Tier)**  
 - ✅ Configuração de layout em `config_rede.json`  
-- ✅ Código modular e escalável  
+- ✅ Código modular, escalável e documentado  
 
 ---
 
@@ -72,21 +67,10 @@ Acesse em: [http://localhost:5000](http://localhost:5000)
 
 ## 🌐 Deploy automático no Render
 
-A aplicação está pronta para deploy direto no Render.
-
-**Configuração:**
-
-- **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `gunicorn app:app`
-- **Runtime:** Python 3
-- **Region:** Oregon (recomendada)
-- **Plan:** Free
-
-**Passos:**
-1. Acesse [https://render.com](https://render.com)
-2. Crie um novo Web Service e conecte seu GitHub
-3. Escolha o repositório `redecard-splitter`
-4. Configure os comandos acima e clique em **Deploy**
+**Build Command:** `pip install -r requirements.txt`  
+**Start Command:** `gunicorn app:app`  
+**Runtime:** Python 3  
+**Plan:** Free  
 
 Após o build, a aplicação estará disponível em:
 ```
@@ -114,27 +98,39 @@ https://redecard-splitter.onrender.com
 ⬇️ Usuário baixa `resultados_rede_splitter.zip`
 ```
 
-### 🔧 Componentes
+---
 
-| Componente | Função |
-|-------------|--------|
-| **Flask App (`app.py`)** | Interface web, upload e geração de ZIP |
-| **Motor de Split (`split_redecard.py`)** | Processamento dos arquivos e separação por PV |
-| **Configuração (`config_rede.json`)** | Define layouts e comportamento de parsing |
-| **Templates HTML** | Interface de upload amigável |
-| **Render Hosting** | Deploy em nuvem com CI/CD automático |
+## 📁 Padrão de Nomenclatura de Saída
+
+Cada arquivo gerado segue o formato:
+
+```
+<estabelecimento>_<TIPO>_<ddmmaa>_<NSA>.txt
+```
+
+| Campo | Origem | Exemplo | Descrição |
+|--------|---------|----------|------------|
+| **estabelecimento** | Header ou detalhe | `010034671` | Número de filiação (PV) |
+| **TIPO** | Tipo do layout | `EEVC`, `EEVD`, `EEFI` | Identificação do tipo de arquivo |
+| **ddmmaa** | Header (data do movimento) | `071025` | Data de geração do movimento |
+| **NSA** | Header | `001` | Número Sequencial do Arquivo |
+
+📄 **Exemplo real de saída:**
+```
+010034671_EEFI_071025_001.txt
+010045778_EEVC_071025_002.txt
+009887654_EEVD_071025_001.txt
+```
 
 ---
 
 ## ⚙️ Configuração dos Layouts (`config_rede.json`)
 
-O arquivo `config_rede.json` define as regras de cada layout:
-
 ```json
 {
   "EEVC": { "formato": "posicional", "header_arquivo": "002", "trailer_arquivo": "028" },
   "EEVD": { "formato": "csv", "delimiter": ",", "header_arquivo": "00", "trailer_arquivo": "04" },
-  "EEFI": { "formato": "csv", "delimiter": ",", "header_arquivo": "00", "trailer_arquivo": "04" }
+  "EEFI": { "formato": "posicional", "header_arquivo": "03", "trailer_arquivo": "09" }
 }
 ```
 
@@ -142,12 +138,12 @@ O arquivo `config_rede.json` define as regras de cada layout:
 
 ## 🧳 Saída esperada
 
-Após o processamento, será gerado um arquivo ZIP contendo:
+Após o processamento, será gerado um arquivo ZIP contendo todos os arquivos desmembrados:
+
 ```
-EEVC_123456789.txt
-EEVC_987654321.txt
-EEVD_123456789.txt
-EEFI_123456789.txt
+010034671_EEFI_071025_001.txt
+010045678_EEVC_071025_001.txt
+009887654_EEVD_071025_002.txt
 ...
 ```
 
@@ -174,6 +170,7 @@ Cada arquivo contém:
 
 **Autor:** Wilson Martins  
 **Organização:** Netunna Software  
-**E-mail:** contato@netunna.com.br  
+**E-mail:** wilson.martins@netunna.com.br  
 **Propósito:** Automação de EDI e conciliação financeira para adquirentes e bancos.  
+
 
