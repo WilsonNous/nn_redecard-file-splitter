@@ -51,11 +51,11 @@ def process_file(input_path, output_dir):
         return []
 
 # ============================================
-# Parser EEVC (Crédito) - layout posicional
+# Parser EEVC (Crédito)
 # ============================================
 def process_eevc(input_path, output_dir):
     """
-    EEVC: posicional.
+    EEVC (Crédito):
     - Data do Movimento: posições 3–10 (DDMMAAAA)
     - NSA: posições 66–71
     Nome: <estab>_<ddmmaa>_<nsa>_EEVC.txt
@@ -78,9 +78,11 @@ def process_eevc(input_path, output_dir):
         tipo = line[:3]
         if tipo == "002":
             header_arquivo = line
+            # Data
             raw_data = line[3:11].strip()
             if re.fullmatch(r'\d{8}', raw_data):
-                data_movimento = raw_data[:4] + raw_data[-2:]  # ddmm + aa
+                data_movimento = raw_data[:4] + raw_data[-2:]
+            # NSA
             nsa_raw = line[66:72].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
                 nsa = nsa_raw[-3:]
@@ -174,13 +176,13 @@ def process_eevd(input_path, output_dir):
 
 
 # ============================================
-# Parser EEFI (Financeiro) - layout posicional
+# Parser EEFI (Financeiro)
 # ============================================
 def process_eefi(input_path, output_dir):
     """
-    EEFI: posicional.
-    - Data do Movimento: posições 21–28 (DDMMAAAA)
-    - NSA: posições 54–59
+    EEFI (Financeiro):
+    - Data do Movimento: posições 3–10 (DDMMAAAA)
+    - NSA: posições 66–71
     Nome: <estab>_<ddmmaa>_<nsa>_EEFI.txt
     """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
@@ -197,13 +199,15 @@ def process_eefi(input_path, output_dir):
     nsa = "000"
 
     for line in lines:
-        tipo = line[:2]
-        if tipo == "03":
+        tipo = line[:3]
+        if tipo == "030":
             header_arquivo = line
-            raw_data = line[21:29].strip()
+            # Data
+            raw_data = line[3:11].strip()
             if re.fullmatch(r'\d{8}', raw_data):
                 data_movimento = raw_data[:4] + raw_data[-2:]
-            nsa_raw = line[54:60].strip()
+            # NSA
+            nsa_raw = line[66:72].strip()
             if re.fullmatch(r'\d{1,6}', nsa_raw):
                 nsa = nsa_raw[-3:]
         elif tipo == "04":
