@@ -50,9 +50,16 @@ def process_file(input_path, output_dir):
         print("❌ Tipo de arquivo desconhecido.")
         return []
 
-# =============== EEVC (Crédito) ===============
-
+# ============================================
+# Parser EEVC (Crédito) - layout posicional
+# ============================================
 def process_eevc(input_path, output_dir):
+    """
+    EEVC: posicional.
+    - Data do Movimento: posições 3–10 (DDMMAAAA)
+    - NSA: posições 66–71
+    Nome: <estab>_<ddmmaa>_<nsa>_EEVC.txt
+    """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
         lines = [l.rstrip('\n') for l in f]
 
@@ -71,15 +78,14 @@ def process_eevc(input_path, output_dir):
         tipo = line[:3]
         if tipo == "002":
             header_arquivo = line
-            data_movimento = safe_slice(line, 143, 151).strip()
-            if re.fullmatch(r'\d{8}', data_movimento):
-                data_movimento = data_movimento[:4] + data_movimento[-2:]
-            else:
-                data_movimento = "000000"
-            nsa_raw = safe_slice(line, 157, 163).strip()
-            nsa = nsa_raw[-3:] if nsa_raw.isdigit() else "000"
+            raw_data = line[3:11].strip()
+            if re.fullmatch(r'\d{8}', raw_data):
+                data_movimento = raw_data[:4] + raw_data[-2:]  # ddmm + aa
+            nsa_raw = line[66:72].strip()
+            if re.fullmatch(r'\d{1,6}', nsa_raw):
+                nsa = nsa_raw[-3:]
         elif tipo == "004":
-            pv = safe_slice(line, 3, 12).strip()
+            pv = line[3:12].strip()
             current_estab = pv
             grupos[pv].append(line)
         elif tipo == "026":
@@ -94,12 +100,13 @@ def process_eevc(input_path, output_dir):
 
     gerados = []
     for estab, blocos in grupos.items():
-        nome = f"{estab}_EEVC_{data_movimento}_{nsa}.txt"
+        nome = f"{estab}_{data_movimento}_{nsa}_EEVC.txt"
         out_path = ensure_outfile(output_dir, nome)
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
                 f.write(header_arquivo + '\n')
-            f.writelines([b + '\n' for b in blocos])
+            for linha in blocos:
+                f.write(linha + '\n')
             if trailer_arquivo:
                 f.write(trailer_arquivo + '\n')
         gerados.append(out_path)
@@ -108,9 +115,17 @@ def process_eevc(input_path, output_dir):
     print(f"✅ {len(gerados)} arquivos EEVC gerados.")
     return gerados
 
-# =============== EEVD (Débito) ===============
 
+# ============================================
+# Parser EEVD (Débito) - CSV delimitado
+# ============================================
 def process_eevd(input_path, output_dir):
+    """
+    EEVD: CSV (vírgula).
+    - Data do Movimento: coluna 4 (DDMMAAAA)
+    - NSA: coluna 8 (numérico)
+    Nome: <estab>_<ddmmaa>_<nsa>_EEVD.txt
+    """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
         lines = f.readlines()
 
@@ -142,12 +157,13 @@ def process_eevd(input_path, output_dir):
 
     gerados = []
     for estab, blocos in grupos.items():
-        nome = f"{estab}_EEVD_{data_movimento}_{nsa}.txt"
+        nome = f"{estab}_{data_movimento}_{nsa}_EEVD.txt"
         out_path = ensure_outfile(output_dir, nome)
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
                 f.write(header_arquivo)
-            f.writelines(blocos)
+            for linha in blocos:
+                f.write(linha)
             if trailer_arquivo:
                 f.write(trailer_arquivo)
         gerados.append(out_path)
@@ -156,9 +172,17 @@ def process_eevd(input_path, output_dir):
     print(f"✅ {len(gerados)} arquivos EEVD gerados.")
     return gerados
 
-# =============== EEFI (Financeiro) ===============
 
+# ============================================
+# Parser EEFI (Financeiro) - layout posicional
+# ============================================
 def process_eefi(input_path, output_dir):
+    """
+    EEFI: posicional.
+    - Data do Movimento: posições 21–28 (DDMMAAAA)
+    - NSA: posições 54–59
+    Nome: <estab>_<ddmmaa>_<nsa>_EEFI.txt
+    """
     with open(input_path, 'r', encoding='utf-8', errors='replace') as f:
         lines = [l.rstrip('\n') for l in f]
 
@@ -176,28 +200,35 @@ def process_eefi(input_path, output_dir):
         tipo = line[:2]
         if tipo == "03":
             header_arquivo = line
-            d = safe_slice(line, 21, 29).strip()
-            if re.fullmatch(r'\d{8}', d):
-                data_movimento = d[:4] + d[-2:]
-            nsa_raw = safe_slice(line, 54, 60).strip()
-            nsa = nsa_raw[-3:] if nsa_raw.isdigit() else "000"
+            raw_data = line[21:29].strip()
+            if re.fullmatch(r'\d{8}', raw_data):
+                data_movimento = raw_data[:4] + raw_data[-2:]
+            nsa_raw = line[54:60].strip()
+            if re.fullmatch(r'\d{1,6}', nsa_raw):
+                nsa = nsa_raw[-3:]
         elif tipo == "04":
-            pv = safe_slice(line, 2, 11).strip()
+            pv = line[2:11].strip()
             grupos[pv].append(line)
         else:
             trailer_arquivo = line
 
     gerados = []
     for estab, blocos in grupos.items():
-        nome = f"{estab}_EEFI_{data_movimento}_{nsa}.txt"
+        nome = f"{estab}_{data_movimento}_{nsa}_EEFI.txt"
         out_path = ensure_outfile(output_dir, nome)
         with open(out_path, 'w', encoding='utf-8') as f:
             if header_arquivo:
                 f.write(header_arquivo + '\n')
-            f.writelines([b + '\n' for b in blocos])
+            for linha in blocos:
+                f.write(linha + '\n')
             if trailer_arquivo:
                 f.write(trailer_arquivo + '\n')
         gerados.append(out_path)
+        print(f"🧾 Gerado: {os.path.basename(out_path)}")
+
+    print(f"✅ {len(gerados)} arquivos EEFI gerados.")
+    return gerados
+
         print(f"🧾 Gerado: {os.path.basename(out_path)}")
 
     print(f"✅ {len(gerados)} arquivos EEFI gerados.")
